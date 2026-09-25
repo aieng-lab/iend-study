@@ -1,0 +1,27 @@
+study_hidden: true
+id: ioi
+classes: [IO, SUBJECT]
+data:
+  local_path: data/synthetic/ioi.csv
+  generator: study.data.synthetic.build_ioi
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+training:
+  # Match gradiend.examples.train_source_both_ioi_one_pole
+  source: both
+  # max_steps was 2000 (inherited from the package example, never tuned here).
+  # Convergence curves checked 2026-08-18 (correlation plateaus well before
+  # 500) confirm 500 (study default) is enough for this task; same LR.
+  max_steps: 500
+  # Optional study-level pole filter (which one-pole features to train).
+  # Package one-pole uses target_classes=[IO] + counterfactual_classes=all.
+  one_pole_classes: [IO]
+ablations:
+  # One-pole IO→SUBJECT only (not peer-pair SUBJECT↔IO).
+  pair: false
+  one_pole: true
+# SAE: factual label_class only (IO vs neutrals). SUBJECT is CF on alternative_*
+# and shares the same masked left-context — not a separate SAE class.
+# CAA expands CF rows so prediction-fill sees both name tokens.
+causal:
+  score: mask_argmax_among
+

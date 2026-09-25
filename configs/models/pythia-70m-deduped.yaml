@@ -1,0 +1,14 @@
+key: pythia-70m-deduped
+hf_model: EleutherAI/pythia-70m-deduped
+sae_model: pythia-70m-deduped
+sae_release: pythia-70m-deduped-res-sm
+n_layers: 6
+hf_resid_template: "gpt_neox.layers.{layer}"
+sae_id_template: "blocks.{layer}.hook_resid_post"
+arch: gpt_neox
+suite_default: full
+learning_rate: 1.0e-5
+training:
+  # Keep the model-specific GRADIEND scale. ACTIEND deliberately inherits the
+  # shared backend-specific 5e-5 default, matching gpt2-small.
+  learning_rate_gradiend: 1.0e-6

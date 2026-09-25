@@ -1,0 +1,46 @@
+# Llama 3.1 8B base + Llama Scope residual SAEs (all 32 layers).
+key: llama-3.1-8b
+hf_model: meta-llama/Llama-3.1-8B
+sae_model: meta-llama/Llama-3.1-8B
+sae_release: llama_scope_lxr_32x
+n_layers: 32
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "l{layer}r_32x"
+arch: llama
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # 1e-6 converged on gender_en, but the race asian-black seed-1 trajectory
+  # was still improving monotonically at step 500 (corr=.846; limiting target
+  # mean=.250), missing convergence only on the fixed |mean|>=.5 gate. Keep
+  # max_steps fixed across models/tasks and double the model-wide LR instead.
+  learning_rate_gradiend: 2.0e-6
+  max_steps_gradiend: 500
+  # ACTIEND converged at encoder LR 1e-5, decoder LR 1.15e-2 and 100 steps in
+  # array 4043017. Pin the recorded decoder rate; it is part of that result.
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  learning_rate_decoder_actiend: 1.15e-2
+  # float32 weights alone are ~~32GB for this 8B model, before gradients,
+  # activations or optimizer state. The study defaulted to float32 everywhere
+  # until 2026-08-28 simply because nothing ever forwarded a dtype; small models
+  # stay float32 so their existing checkpoints and hashes are untouched.
+  torch_dtype: bfloat16
+  # GRADIEND's encoder/decoder spans the pruned gradient vector, so the default
+  # topk 0.1 keeps ~692M of 6.9B dims and the head alone tries to allocate 26GB
+  # -- it OOMs on a 140GB H200. 0.01 keeps ~69M, which fits alongside the
+  # bfloat16 weights. ACTIEND is unaffected (its encoder is d_model-sized).
+  pre_prune:
+    topk: 0.01
+  # Full-width CGA first concatenates a 6.9B-coordinate fp32 gradient on the
+  # GPU (~25.8-26 GiB) before it can transfer its running mean to the CPU --
+  # observed OOM on jobs 4098622 (host-RAM kill) and 4182960 (GPU OOM,
+  # "Tried to allocate 26.00 GiB", language task, 2026-09-15). Use the same
+  # fixed 1% coordinate projection as GRADIEND (already applied to
+  # qwen3.5-9b-base/gemma-3-27b-pt for the identical failure); the
+  # closed-form mean remains exact within that recorded projection.
+  cga_pre_prune: true
+  # Keep the (now much smaller, pruned) accumulator on host RAM anyway --
+  # cheap insurance, and consistent with the other 8-9B model configs.
+  cga_accumulate_device: cpu

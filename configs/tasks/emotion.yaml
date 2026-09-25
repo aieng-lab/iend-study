@@ -1,0 +1,7 @@
+id: emotion
+classes: [positive, negative]
+data:
+  hf_dataset: aieng-lab/en-sentiment-nrc
+  # Vocabulary-held-out adjective splits used by the package-paper protocol.
+  hf_config: split
+  neutral_hf: aieng-lab/en-sentiment-nrc-neutral

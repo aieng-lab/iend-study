@@ -1,0 +1,40 @@
+# Reduced headline suite (default for models not listed in full.models).
+id: core
+models: []  # empty = apply to any model not claiming full
+
+methods:
+  gradiend: [none]
+  actiend: [none]
+  # No ACTIEND ridge decoder in core (opt-in; enabled in full/full_plus).
+  actiend_ridge: false
+  sae: [k1, kstar, all_k1]
+  caa: [act_prediction]
+  # Plain CGA only. With pair + one_pole below this yields CGA and CGA_1p;
+  # tensor-normalized CGA remains a small-model/full_plus ablation.
+  # Core headline protocol locks aggregate-versus-layer representation by
+  # validation Det., matching CAA and SAE. Full-plus retains every layer row.
+  cga: [plain, layers]
+  # Activation-gradient baselines are main comparison methods, not optional
+  # full_plus ablations.  Core keeps only each method's plain variant.
+  caga: [plain, layers]
+  agiend: [plain]
+  localization: false
+
+ablations:
+  pair: true
+  one_pole: true
+
+causal:
+  enabled: true
+  primary_only: true
+  # Core keeps causal for the validation-selected representation only, but the
+  # layer-selection strip/paired plots compare it with the other one (all-layer
+  # aggregate vs best single layer). After the normal run, a reuse-only second pass
+  # computes exactly the missing sweeps (study.runner.paired_pass_overrides).
+  # Per-layer curves stay a full-suite feature (full/full_plus).
+  paired_layer_pass: true
+  # Large-model/core execution: run only the ACTIEND default policy, which is now
+  # ungated all-token (``all`` -> ``tok_all``; it steers better than the gated
+  # policy). Full suites additionally run the ``gated_all`` and ``prediction``
+  # ablations.
+  actiend_policies: [all]

@@ -1,0 +1,22 @@
+id: function_composition
+classes: [RESULT, DISTRACTOR]
+data:
+  local_path: data/synthetic/function_composition_easy.csv
+  generator: study.data.synthetic.build_function_composition
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+  # easy | medium | hard — separate caches under data/synthetic/function_composition_{difficulty}.csv
+  difficulty: easy
+  # Assignment / alias chains: x=red, a=blue, y=x, y=[MASK] → red
+training:
+  # Same knobs as ioi / gradiend.examples.train_source_both_ioi_one_pole
+  source: both
+  # max_steps was 2000 (inherited from the package example, never tuned here).
+  # Convergence curves checked 2026-08-18 (correlation plateaus well before
+  # 500) confirm 500 (study default) is enough for this task; same LR.
+  max_steps: 500
+  one_pole_classes: [RESULT]
+ablations:
+  pair: false
+  one_pole: true
+causal:
+  score: continuation_match

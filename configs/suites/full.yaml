@@ -1,0 +1,28 @@
+# Full ablation suite (default for small models listed under models).
+id: full
+models:
+  - pythia-70m-deduped
+  - gpt2-small
+
+methods:
+  gradiend: [none]
+  actiend: [none]
+  # Causal-only ridge decoder fitted over each ACTIEND checkpoint (opt-in).
+  actiend_ridge: true
+  sae: [k1, kstar, all_k1, opp_fire, joint, arad_out, jh_f1, clamp]
+  caa: [act_prediction, act_mean, act_last]
+  # CGA — Contrastive Gradient Addition: the untrained gradient-space
+  # mean-difference (cga_eval.py). Fills the missing cell of the
+  # (activation|gradient) x (mean-diff|learned) grid, so GRADIEND-vs-CAA no
+  # longer changes both factors at once. `tensor_norm` lives in `full_plus`.
+  cga: [plain]
+  localization: true
+
+ablations:
+  pair: true
+  one_pole: true
+
+causal:
+  enabled: true
+  primary_only: false
+  actiend_policies: [gated_all, all, prediction]

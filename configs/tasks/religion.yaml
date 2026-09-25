@@ -1,0 +1,5 @@
+id: religion
+classes: [christian, muslim, jewish]
+data:
+  hf_dataset: aieng-lab/gradiend_religion_data
+  neutral_hf: aieng-lab/biasneutral-ajibawa

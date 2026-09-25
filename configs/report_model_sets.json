@@ -1,0 +1,12 @@
+{
+  "paper_models": [
+    {"model": "pythia-70m-deduped", "subdir": "suite_full2"},
+    {"model": "gpt2-small", "subdir": "suite_full2"},
+    {"model": "llama-3.1-8b", "subdir": ""}
+  ],
+  "ablation_candidate_models": [
+    {"model": "pythia-70m-deduped", "subdir": "suite_full2"},
+    {"model": "gpt2-small", "subdir": "suite_full2"},
+    {"model": "llama-3.1-8b", "subdir": ""}
+  ]
+}

@@ -1,0 +1,11 @@
+# Standard small GPT-2 baseline (full ablation suite).
+key: gpt2-small
+hf_model: gpt2
+sae_model: gpt2-small
+sae_release: gpt2-small-resid-post-v5-32k
+n_layers: 12
+hf_resid_template: "transformer.h.{layer}"
+sae_id_template: "blocks.{layer}.hook_resid_post"
+arch: gpt2
+suite_default: full
+learning_rate: 1.0e-5

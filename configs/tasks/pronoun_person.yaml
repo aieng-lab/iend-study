@@ -1,0 +1,10 @@
+id: pronoun_person
+classes: ["1", "2", "3"]
+data:
+  hf_dataset: aieng-lab/en-pronouns
+  neutral_hf: aieng-lab/en-pronoun-neutral
+  max_rows_per_split: null
+class_merge_map:
+  "1": [1SG, 1PL]
+  "2": [2SGPL]
+  "3": [3SG, 3PL]

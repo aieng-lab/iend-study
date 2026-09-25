@@ -1,0 +1,16 @@
+id: repetition
+classes: ["YES", "NO"]
+data:
+  local_path: data/synthetic/repetition.csv
+  generator: study.data.synthetic.build_repetition
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+training:
+  eval_steps: 25
+  # The factual pole is the repeated continuation; NO remains an explicit
+  # counterfactual on every row.
+  one_pole_classes: ["YES"]
+ablations:
+  pair: false
+  one_pole: true
+causal:
+  score: continuation_match

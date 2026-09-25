@@ -1,0 +1,7 @@
+# Lightweight smoke / short jobs: NVIDIA GPU with >= 24 GiB VRAM.
+SBATCH_PARTITION=gpu
+SBATCH_GRES=gpu:1
+SBATCH_CONSTRAINT='gpumem.24gib&nvidiagpu'
+SBATCH_CPUS=4
+SBATCH_MEM=16G
+SBATCH_TIME=2:00:00

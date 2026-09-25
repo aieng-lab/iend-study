@@ -1,0 +1,39 @@
+# Gemma 2 2B (base) + Gemma Scope v1 residual SAEs (all 26 layers, 16k, canonical L0).
+# Base model, matching the other study models (Gemma Scope v1 was trained on this
+# checkpoint; the -it variant is only used by the AxBench config).
+key: gemma-2-2b
+hf_model: google/gemma-2-2b
+sae_model: google/gemma-2-2b
+sae_release: gemma-scope-2b-pt-res-canonical
+n_layers: 26
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer_{layer}/width_16k/canonical"
+arch: gemma2
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # GRADIEND's active gender_en screen uses this 500-step protocol.  It is
+  # deliberately aligned with the screen so completed artifacts can be
+  # promoted into the main study without retraining.
+  # 3e-8 (gender_en screen) left race/religion non-convergent, still improving at
+  # step 500; 3e-7 and above collapse on gender_en, 1e-7 matched 3e-8 there
+  # (corr 0.874 vs 0.88). Screened across all tasks in runs/gemma-2-2b/gradiend_lr1e7.
+  learning_rate_gradiend: 1.0e-7
+  max_steps_gradiend: 500
+  # ACTIEND: screened on gender_en (pair corr): 1e-5 -> ~0.0 (no separation),
+  # 3e-5 -> 0.95, 1e-4 -> collapsed (encodings pinned at -1).  3e-5 chosen.
+  learning_rate_actiend: 3.0e-5
+  max_steps_actiend: 100
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND (500 steps, shared decoder LR).  gender_en: 3e-4 too slow, 3e-3 fast
+  # (corr 0.965 by step 50).  1e-3 was tried on language/pronoun_person/race: ALL
+  # non-convergent.  3e-3 chosen (user).  NOTE: language + pronoun_person rows were
+  # produced at 1e-3 (not rerun, by decision); the remaining tasks use 3e-3.
+  learning_rate_agiend: 3.0e-3
+  torch_dtype: bfloat16
+  # Same layers-only 1% coordinate projection as the other bf16 models.
+  pre_prune:
+    topk: 0.01
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

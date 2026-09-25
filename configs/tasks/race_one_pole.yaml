@@ -1,0 +1,19 @@
+# One-pole multiclass ACTIEND/GRADIEND for race (extends race).
+# source=both alternates poles on target-class prompts (IOI-style contract).
+# SAE/CAA are unchanged by one-pole training — use the base ``race`` task for those.
+# HIDDEN from list_tasks()/TASKS=all as of 2026-08-31: source=both is now
+# the default for ALL one-pole training (study/stages/train.py::
+# one_pole_train_source), so the base `race` task's own one-pole ablation
+# covers what this check-task was built to prove. Kept for reproducibility;
+# still loadable via --task race_one_pole.
+study_hidden: true
+extends: race
+id: race_one_pole
+training:
+  source: both
+ablations:
+  pair: false
+  one_pole: true
+methods:
+  sae: false
+  caa: false

@@ -1,0 +1,15 @@
+id: ravel_continent
+classes: [asia, europe, africa]
+data:
+  local_path: data/mib/ravel_continent.csv
+  neutral_path: data/mib/ravel_continent_neutral.csv
+  hf_dataset: hij/ravel
+  hf_config: city_entity
+  hf_revision: 2c45eb232b9944c235509db5320345eaba563e07
+  attribute: Continent
+  top_k: 3
+training:
+  source: both
+eval:
+  # Entity→continent knowledge; tiny models often fail — skip below threshold.
+  min_base_accuracy: 0.4

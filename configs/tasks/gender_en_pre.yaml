@@ -1,0 +1,10 @@
+# DEPRECATED task overlay — kept only for legacy runs under
+# runs/*/gender_en_pre/. Prefer opt-in ``training.actiend_pre: true`` on
+# ``gender_en`` (ids ``actiend_pre:…``) if you need mixed-site ACTIEND again.
+# Hidden from list_tasks() / TASKS=all.
+study_hidden: true
+extends: gender_en
+id: gender_en_pre
+training:
+  activation_site: pre_prediction
+  target_activation_site: prediction

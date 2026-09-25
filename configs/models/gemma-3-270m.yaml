@@ -1,0 +1,33 @@
+# Gemma 3 270M + Gemma Scope 2 resid SAEs (all layers, 16k / small L0).
+key: gemma-3-270m
+hf_model: google/gemma-3-270m
+sae_model: google/gemma-3-270m
+sae_release: gemma-scope-2-270m-pt-res-all
+n_layers: 18
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer_{layer}_width_16k_l0_small"
+arch: gemma3
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values), to be settled by the gender_en LR
+  # sweep -- not tuned. Basis: the converged range of the closest models.
+  # GRADIEND converged at 1e-6 (pythia-70m, qwen-2B, llama-8B) .. 1e-4 (gpt2).
+  # The gemma-2-2b GRADIEND screens are NOT valid evidence: they were measured on
+  # a class-constant input signal (left-padding label bug, fixed in the gradiend
+  # package 2026-09-25).
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  # ACTIEND converged at 1e-5 (gpt2, llama, qwen, gemma-3-27b) .. 5e-5 (pythia).
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND converged at 3e-3 on gpt2/pythia/gemma-2-2b, 1e-3 on qwen-2B.
+  learning_rate_agiend: 1.0e-3
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # float32 (270M): no dtype override, like the other small models.

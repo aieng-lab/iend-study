@@ -1,0 +1,51 @@
+# Qwen3.5-35B-A3B-Base (MoE) + Qwen-Scope TopK resid SAEs (W32K, L0=50).
+# Requires sae-lens >= 6.43 (Qwen Scope loader).
+key: qwen3.5-35b-a3b-base
+hf_model: Qwen/Qwen3.5-35B-A3B-Base
+sae_model: Qwen/Qwen3.5-35B-A3B-Base
+sae_release: qwen-scope-3.5-35b-a3b-base-w32k-l50
+sae_hf_repo: Qwen/SAE-Res-Qwen3.5-35B-A3B-Base-W32K-L0_50
+n_layers: 40
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer{layer}"
+arch: qwen3_5_moe
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values), to be settled by the gender_en LR
+  # sweep.  Same family as qwen3.5-2b/9b, where GRADIEND converged at 1e-6 on
+  # both (9B also at 1e-5) -- 1e-6 is the value common to both sizes.
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND: 1e-3 at qwen-2B, 3e-4 at qwen-9B (3e-5 failed there).  The MoE has
+  # ~3B ACTIVE parameters, so start between the two.
+  learning_rate_agiend: 1.0e-4
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # float32 weights alone are ~~140GB for this 35B MoE model, before gradients,
+  # activations or optimizer state. The study defaulted to float32 everywhere
+  # until 2026-08-28 simply because nothing ever forwarded a dtype; small models
+  # stay float32 so their existing checkpoints and hashes are untouched.
+  torch_dtype: bfloat16
+  # bf16 weights ~70 GiB + weight gradients of the layers-only scope ~68 GiB
+  # (all experts are in scope) = ~138 GiB: does not fit one 141 GiB H200 for
+  # GRADIEND/CGA.  Shard over GPUs 1-2 of a 3-GPU job (GPU 0 holds the head).
+  # A no-op on 1-GPU jobs.
+  base_model_device_map: auto
+  # Same fixed 1% layers-only projection as the other 4B+ models (~340M dims
+  # here; the ~13 GiB head lives on the weight-free GPU 0).
+  pre_prune:
+    topk: 0.01
+  # Same fixed 1% coordinate projection as GRADIEND, for the identical
+  # reason it's now set on llama-3.1-8b/llama-3.3-70b-instruct/
+  # qwen3.5-9b-base/gemma-3-27b-pt: full-width CGA concatenates the entire
+  # un-pruned fp32 gradient on GPU before transferring to the CPU accumulator.
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

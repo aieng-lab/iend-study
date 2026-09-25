@@ -1,0 +1,5 @@
+id: race
+classes: [asian, black, white]
+data:
+  hf_dataset: aieng-lab/gradiend_race_data
+  neutral_hf: aieng-lab/biasneutral-ajibawa

@@ -1,0 +1,46 @@
+# Gemma 3 4B PT + Gemma Scope 2 resid SAEs (all layers, 16k / small L0).
+key: gemma-3-4b-pt
+hf_model: google/gemma-3-4b-pt
+sae_model: google/gemma-3-4b-pt
+sae_release: gemma-scope-2-4b-pt-res-all
+n_layers: 34
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer_{layer}_width_16k_l0_small"
+arch: gemma3
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values), to be settled by the gender_en LR
+  # sweep -- not tuned.  Until 2026-09-25 this file carried no LR overrides at
+  # all, so every method silently inherited the shared 1e-5.
+  # NO valid Gemma GRADIEND LR evidence exists: the gemma-2-2b screens (3e-8,
+  # 1e-7) were measured on a class-constant input signal (left-padding label
+  # bug, fixed in the gradiend package 2026-09-25), so they say nothing about the
+  # LR.  1e-6 is the decade centre of the converged range on right-padded
+  # models (qwen-2B/9B, llama-8B).
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  # ACTIEND: gemma-3-27b converged at 1e-5 (pair corr 0.95 at step 40);
+  # gemma-2-2b needed 3e-5.
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND: 1e-3 (qwen-2B) .. 3e-3 (gemma-2-2b, gemma-3-27b).
+  learning_rate_agiend: 1.0e-3
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # float32 weights alone are ~~16GB for this 4B model, before gradients,
+  # activations or optimizer state. The study defaulted to float32 everywhere
+  # until 2026-08-28 simply because nothing ever forwarded a dtype; small models
+  # stay float32 so their existing checkpoints and hashes are untouched.
+  torch_dtype: bfloat16
+  # Same fixed 1% layers-only coordinate projection as every other 4B+ model
+  # (~32M of ~3.2B dims here), so GRADIEND/CGA see the same signal fraction.
+  pre_prune:
+    topk: 0.01
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

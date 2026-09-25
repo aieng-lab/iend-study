@@ -1,0 +1,14 @@
+id: ravel_language
+classes: [english, portuguese, spanish]
+data:
+  local_path: data/mib/ravel_language.csv
+  neutral_path: data/mib/ravel_language_neutral.csv
+  hf_dataset: hij/ravel
+  hf_config: city_entity
+  hf_revision: 2c45eb232b9944c235509db5320345eaba563e07
+  attribute: Language
+  top_k: 3
+training:
+  source: both
+eval:
+  min_base_accuracy: 0.4

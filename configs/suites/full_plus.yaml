@@ -1,0 +1,44 @@
+# Opt-in extension of `full`: additionally trains by-tensor GRADIEND/ACTIEND
+# ({backend}:{cls}:tensors — one aggregate row per component split, not a
+# layer sweep). Separate from `full` deliberately: study/stages/train.py's
+# _TENSORS_SKIP_BACKENDS notes component-split training is much slower and
+# has historically been non-convergent on study tasks for gradiend/actiend —
+# this suite is where to find out whether that's still true, without putting
+# every `--suite full` run at risk of it. See CLAUDE.md "full_plus" note.
+id: full_plus
+models:
+  - pythia-70m-deduped
+  - gpt2-small
+
+methods:
+  gradiend: [none, tensors]
+  actiend: [none, tensors]
+  # Causal-only ridge decoder fitted over each ACTIEND checkpoint (opt-in).
+  actiend_ridge: true
+  sae: [k1, kstar, all_k1, opp_fire, joint, arad_out, jh_f1, clamp]
+  caa: [act_prediction, act_mean, act_last]
+  # Adds CGA's per-tensor-normalized variant on top of `full`'s plain estimator:
+  # raw gradient magnitude spans orders of magnitude across weight tensors, so
+  # this checks whether a weak plain CGA is the gradient signal itself or just
+  # that heterogeneity. Kept out of `full` so the headline CGA column stays the
+  # CAA-matched estimator.
+  cga: [plain, tensor_norm, layers]
+  # CAGA — Contrastive Activation-Gradient Addition: the untrained dL/dh mean-diff
+  # (activation-gradient signal). Steers activations (CAA path), never rewrites
+  # weights. Closes the signal×estimator grid's activation-gradient cell. Causal
+  # rides the same claim-filtered path as the IEND backends; one-pole caga:C ids.
+  caga: [plain, layers]
+  # AGIEND — the LEARNED activation-gradient encoder-decoder (dL/dh), trained like
+  # ACTIEND; steers activations. Completes the act-grad row of the 3x2 grid
+  # (learned estimator) alongside CAGA (mean-diff).
+  agiend: [plain]
+  localization: true
+
+ablations:
+  pair: true
+  one_pole: true
+
+causal:
+  enabled: true
+  primary_only: false
+  actiend_policies: [gated_all, all, prediction]

@@ -1,0 +1,21 @@
+id: language
+classes: [en, fr, de]
+data:
+  local_path: data/synthetic/language.csv
+  generator: study.data.synthetic.build_language
+  classes: [en, fr, de]
+  # Other real languages in the same [lang] prefix[MASK] wrapper (not English prose).
+  neutral_langs: [es, it, nl, pt]
+  neutral_path: data/synthetic/language_neutral.csv
+  # Full build: one OPUS/Tatoeba side per language + MUSE rival-class alternatives.
+  # Smoke uses an offline fixture (no download).
+training:
+  source: both
+  # max_steps was 2000 (inherited from the package example, never tuned here).
+  # Convergence curves checked 2026-08-18 (correlation plateaus well before
+  # 500) confirm 500 (study default) is enough for this task; same LR.
+  max_steps: 500
+causal:
+  score: mask_argmax_among
+eval:
+  min_base_accuracy: 0.4

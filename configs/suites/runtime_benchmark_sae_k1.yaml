@@ -1,0 +1,25 @@
+# Controlled SAE cost companion to runtime_benchmark.yaml: ONE SAE instance.
+# Keeps the full gender_en one-pole task and the complete layer sweep, but only
+# the headline k=1 feature at the filled-span ("prediction") site.  Versus
+# runtime_benchmark.yaml (sae + sae_pre, k1 + kstar) this drops the pre_prediction
+# site (encode/select pass and its causal) and the kstar causal id (an exact
+# duplicate of k1 when only k=1 is read out): causal is 2 evaluations (M, F)
+# instead of 8; detection is one site sweep instead of two.
+id: runtime_benchmark_sae_k1
+models: []
+
+methods:
+  sae: [k1]
+  localization: false
+
+ablations:
+  pair: false
+  one_pole: true
+
+training:
+  sae_select_sites: [prediction]
+
+causal:
+  enabled: true
+  primary_only: true
+  actiend_policies: [all]

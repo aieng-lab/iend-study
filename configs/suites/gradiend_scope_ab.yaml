@@ -1,0 +1,46 @@
+# Scope A/B arm: identical to `full_plus` except GRADIEND keeps its FULL
+# parameter scope (training.gradiend_exclude_embeddings: false → the package's
+# plain scope_mode="default", not SignalScope.layers()).
+#
+# Why this exists. `SignalScope.layers()` attached to a *gradient* signal was a
+# silent no-op until the package fix of 2026-08-20/21 (see the comment at the
+# top of study/training_profiles.py). So every GRADIEND run before that date
+# trained over the full parameter set regardless of what
+# `gradiend_exclude_embeddings` was set to, and every run after it trains over
+# the residual blocks only. The flag's *value* never changed, so `config_hash`
+# is identical across that boundary — `runs/gpt2-small/{race,suite_full/race}`
+# (2026-08-19/20) and `runs/gpt2-small/suite_full2/race` (2026-08-30) all carry
+# hash c88fd74352dc, yet gradiend:asian's roc_auc_other went 0.903 → 0.380 and
+# the one-pole conditions stopped converging.
+#
+# This suite runs the pre-fix scope under today's code so the two arms can be
+# compared on equal footing. Unlike `gradiend_no_embed` (pair-only), it keeps
+# full_plus's ablations so the ONE-POLE rows — where the regression shows up —
+# are actually produced.
+#
+# Run GRADIEND-only into a dedicated OUTPUT_SUBDIR so it never merges into the
+# canonical tree:
+#   MODELS=gpt2-small TASKS=race SUITE=gradiend_scope_ab METHODS=gradiend #     OUTPUT_SUBDIR=gradiend_scope_full bash slurm/study_array.sh
+id: gradiend_scope_ab
+models:
+  - pythia-70m-deduped
+  - gpt2-small
+
+methods:
+  gradiend: [none]
+  actiend: [none]
+  sae: [k1]
+  caa: [act_prediction]
+  localization: false
+
+# Mirrors full_plus so one-pole rows exist and are comparable to suite_full2.
+ablations:
+  pair: true
+  one_pole: true
+
+training:
+  gradiend_exclude_embeddings: false
+
+causal:
+  enabled: true
+  primary_only: true

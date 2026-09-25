@@ -1,0 +1,39 @@
+# Opt-in, narrowly-scoped ablation: GRADIEND two-pole only, with word/position
+# embeddings (and the final layer norm) INCLUDED in its gradient scope
+# (training.gradiend_exclude_embeddings: false — falls back to the package's
+# plain scope_mode="default", not SignalScope.layers(); see
+# study/training_profiles.py's comment above the flag's handling and
+# CLAUDE.md's "GRADIEND main-experiment scope" note). Inverted 2026-08-21:
+# excluding embeddings (SignalScope.layers()) is now the *main-experiment
+# default* (configs/defaults.yaml), so this suite's question flipped from
+# "does excluding wte/wpe (and ln_f) change GRADIEND's numbers" to "does going
+# back to the full backbone change GRADIEND's numbers" — same comparison,
+# opposite arm now needs the explicit override. Deliberately NOT
+# folded into full.yaml: this exists to answer that on a couple of tasks without
+# paying for a full suite retrain. Run with --methods gradiend --skip-localization
+# and a dedicated OUTPUT_SUBDIR so it never merges into the canonical suite_full
+# tree, e.g.:
+#   TASKS=gender_en,emotion METHODS=gradiend OUTPUT_SUBDIR=gradiend_no_embed_ablation \
+#     bash slurm/study_tasks.sh pythia-70m-deduped gradiend_no_embed
+id: gradiend_no_embed
+models:
+  - pythia-70m-deduped
+  - gpt2-small
+
+methods:
+  gradiend: [none]
+  actiend: [none]
+  sae: [k1]
+  caa: [act_prediction]
+  localization: false
+
+ablations:
+  pair: true
+  one_pole: false
+
+training:
+  gradiend_exclude_embeddings: false
+
+causal:
+  enabled: true
+  primary_only: true

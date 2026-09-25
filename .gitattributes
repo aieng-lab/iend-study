@@ -1,0 +1,5 @@
+# Shell / Slurm must stay LF — CRLF breaks bash on Linux (`$'\r': command not found`).
+*.sh text eol=lf
+*.sbatch text eol=lf
+*.bash text eol=lf
+slurm/** text eol=lf

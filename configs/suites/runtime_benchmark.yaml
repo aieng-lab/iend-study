@@ -1,0 +1,29 @@
+# Appendix benchmark: one comparable method instance on one fixed GPU.
+#
+# The SAE entry intentionally remains a *complete layer/feature sweep* rather
+# than a cherry-picked layer.  Cost rows carry ledger_unit=sae_layer_sweep, so
+# reporting aggregates its wall time across layers and its GPU RAM by maximum.
+# All other methods run their one-pole instance only.  This is deliberately
+# separate from the headline suite, which retains pair and layer ablations.
+id: runtime_benchmark
+models: []
+
+methods:
+  gradiend: [none]
+  actiend: [none]
+  actiend_ridge: false
+  sae: [k1, kstar, all_k1]
+  caa: [act_prediction]
+  cga: [plain]
+  caga: [plain]
+  agiend: [plain]
+  localization: false
+
+ablations:
+  pair: false
+  one_pole: true
+
+causal:
+  enabled: true
+  primary_only: true
+  actiend_policies: [all]

@@ -1,0 +1,22 @@
+id: key_value
+classes: [VALUE, OTHER]
+data:
+  local_path: data/synthetic/key_value_easy.csv
+  generator: study.data.synthetic.build_key_value
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+  # easy | medium | hard — separate caches under data/synthetic/key_value_{difficulty}.csv
+  difficulty: easy
+  # ~10k factual VALUE rows (train 8k / val 1k / test 1k)
+training:
+  # Same knobs as ioi / gradiend.examples.train_source_both_ioi_one_pole
+  source: both
+  # max_steps was 2000 (inherited from the package example, never tuned here).
+  # Convergence curves checked 2026-08-18 (correlation plateaus well before
+  # 500) confirm 500 (study default) is enough for this task; same LR.
+  max_steps: 500
+  one_pole_classes: [VALUE]
+ablations:
+  pair: false
+  one_pole: true
+causal:
+  score: continuation_match

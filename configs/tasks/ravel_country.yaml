@@ -1,0 +1,14 @@
+id: ravel_country
+classes: [united_states, china, russia]
+data:
+  local_path: data/mib/ravel_country.csv
+  neutral_path: data/mib/ravel_country_neutral.csv
+  hf_dataset: hij/ravel
+  hf_config: city_entity
+  hf_revision: 2c45eb232b9944c235509db5320345eaba563e07
+  attribute: Country
+  top_k: 3
+training:
+  source: both
+eval:
+  min_base_accuracy: 0.4

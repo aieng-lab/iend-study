@@ -1,0 +1,48 @@
+# gpt-oss-20b (MoE: 24 layers, hidden 2880, 32 experts, 4 active; ~3.6B active).
+# DRAFT -- NOT RUNNABLE YET, two blockers, both unverified/unimplemented:
+#  1. The published checkpoint stores the expert weights in MXFP4.  Weight-space
+#     methods (GRADIEND, CGA) need gradients and an in-place delta on those
+#     weights, which a quantized tensor cannot take.  Loading must dequantize
+#     to bf16 (transformers Mxfp4Config(dequantize=True), ~42 GiB); neither the
+#     study nor the gradiend package passes any quantization_config today.
+#  2. gradiend's ModelTopology has no gpt_oss entry; whether the structural
+#     fallback resolves layers-only scope on the fused-expert MoE layers is
+#     untested.
+# SAE: sae-lens ships the third-party release gpt-oss-20b-andyrdt (verified in
+# sae-lens 6.51.3's pretrained_saes.yaml): 6 residual-stream SAEs, one per
+# 4th layer, so the SAE sweeps are restricted to those layers.  It is not an
+# official OpenAI/Goodfire release.
+# Run the smoke path (--smoke, gender_en, methods caa actiend) before any LR sweep.
+key: gpt-oss-20b
+hf_model: openai/gpt-oss-20b
+sae_model: openai/gpt-oss-20b
+sae_release: gpt-oss-20b-andyrdt
+n_layers: 24
+sae_layers: [3, 7, 11, 15, 19, 23]
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "resid_post_layer_{layer}_trainer_0"
+arch: gpt_oss
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values); ~3.6B active parameters, so the
+  # 2B-4B-class values are the nearest evidence.
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  learning_rate_agiend: 1.0e-3
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # bf16 after dequantization: ~42 GiB weights (+ ~40 GiB weight gradients).
+  torch_dtype: bfloat16
+  # Same fixed 1% layers-only projection as the other 4B+ models (~195M dims).
+  pre_prune:
+    topk: 0.01
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

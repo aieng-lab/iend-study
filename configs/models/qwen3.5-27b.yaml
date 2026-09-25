@@ -1,0 +1,43 @@
+# Qwen3.5-27B (dense, post-trained: no -Base release exists) + Qwen-Scope TopK
+# resid SAEs (W80K, L0=50).  Requires sae-lens >= 6.43 (Qwen Scope loader).
+# sae_release verified against sae-lens 6.51.3's pretrained_saes.yaml: model
+# Qwen/Qwen3.5-27B, ids layer0..layer63 (sae_hf_repo is informational only; the
+# code resolves the SAE through sae_release).
+key: qwen3.5-27b
+hf_model: Qwen/Qwen3.5-27B
+sae_model: Qwen/Qwen3.5-27B
+sae_release: qwen-scope-3.5-27b-w80k-l50
+sae_hf_repo: Qwen/SAE-Res-Qwen3.5-27B-W80K-L0_50
+n_layers: 64
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer{layer}"
+arch: qwen3_5
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values), to be settled by the gender_en LR
+  # sweep.  Same family as qwen3.5-2b/9b: GRADIEND converged at 1e-6 on both
+  # (9B also at 1e-5); ACTIEND at 1e-5 on both.
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND shrinks with size: 1e-3 at qwen-2B, 3e-4 at qwen-9B (3e-5 failed).
+  learning_rate_agiend: 1.0e-4
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # bf16 weights ~54 GiB (float32 would be ~108 GiB).
+  torch_dtype: bfloat16
+  # Same sharded-loader policy as gemma-3-27b-pt: weights ~54 + weight grads
+  # ~51 GiB; GPU 0 keeps the head, the backbone shards over GPUs 1-2.
+  base_model_device_map: auto
+  # Same fixed 1% layers-only projection as the other 4B+ models (~250M dims).
+  pre_prune:
+    topk: 0.01
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

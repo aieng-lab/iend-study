@@ -1,0 +1,50 @@
+# Llama 3.3 70B Instruct — Goodfire SAE at layer 50 only (SAELens release).
+# DRAFT: never run.  bf16 weights alone (~141 GiB) exceed one H200, so EVERY
+# method needs the sharded loader (see configs/slurm_profiles.yaml).
+key: llama-3.3-70b-instruct
+hf_model: meta-llama/Llama-3.3-70B-Instruct
+sae_model: meta-llama/Llama-3.3-70B-Instruct
+sae_release: goodfire-llama-3.3-70b-instruct
+sae_hf_repo: Goodfire/Llama-3.3-70B-Instruct-SAE-l50
+n_layers: 80
+sae_layers: [50]
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer_{layer}"
+arch: llama
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # UNSCREENED first guesses (decade values), to be settled by the gender_en LR
+  # sweep.  Llama-3.1-8B: GRADIEND converged at 1e-6, ACTIEND at 1e-5.
+  learning_rate_gradiend: 1.0e-6
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND shrinks with size (qwen: 1e-3 at 2B, 3e-4 at 9B).
+  learning_rate_agiend: 1.0e-4
+  # AGIEND decoder LR: 'auto' (reachability lift, calibrated during training) for the large models
+  # (user directive 2026-09-25); on gpt2/pythia shared and auto gave the same causal effect.
+  learning_rate_decoder_agiend: auto
+  # float32 weights alone are ~~280GB for this 70B model, before gradients,
+  # activations or optimizer state. The study defaulted to float32 everywhere
+  # until 2026-08-28 simply because nothing ever forwarded a dtype; small models
+  # stay float32 so their existing checkpoints and hashes are untouched.
+  torch_dtype: bfloat16
+  # bf16 weights ~141 GiB (+ ~137 GiB weight gradients for GRADIEND/CGA).  GPU 0
+  # carries no weights (package max_memory {0: "0GiB"}), so this needs a 3-GPU
+  # job for the activation-space methods and a 4-GPU job for GRADIEND/CGA.
+  base_model_device_map: auto
+  # Same fixed 1% layers-only projection as the other 4B+ models (~685M dims
+  # here -- the same size that OOM'd a single H200 at 8B, but the ~26 GiB head
+  # now lives on the weight-free GPU 0).
+  pre_prune:
+    topk: 0.01
+  # Full-width CGA would concatenate a ~70B-coordinate fp32 gradient on the
+  # GPU (~260 GiB).  Same fixed 1% coordinate projection as GRADIEND; untested
+  # at this scale.
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

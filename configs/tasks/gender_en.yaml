@@ -1,0 +1,42 @@
+id: gender_en
+classes: [M, F]
+data:
+  hf_dataset: aieng-lab/genter-ajibawa-name-filled
+  hf_subset: n1
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+  max_rows_per_split: null
+eval_proxies:
+  - he_she
+  - her_his
+causal:
+  score: he_she_margin
+  target_tokens:
+    M: [he, his, him]
+    F: [she, her]
+theory:
+  # E0 v2 is opt-in via scripts/run_iend_e0.py. It diagnoses the theory
+  # assumptions without expanding the headline SAE/CAA/IEND comparison grid.
+  contrasts:
+    - id: M_vs_F
+      positive_class: M
+      negative_classes: [F]
+  # diff is analyzed only as target geometry; it is never presented as
+  # evidence that an encoder predicts its target from an independent source.
+  source_recovery: [factual, alternative, both]
+  target_geometry: diff
+  splits: [train, validation, test]
+  # Directed transitions: keep only M→F or only F→M factual rows. Neutral
+  # identities remain specificity controls, not the definition of one-pole.
+  one_pole_views: [positive_directed_one_pole, negative_directed_one_pole]
+  max_size_per_group: 32
+  max_samples_per_split: 96
+  n_permutations: 100
+  permutation_seed: 0
+  ridge_grid: [1.0e-6, 1.0e-4, 1.0e-2, 1.0e-1, 1.0, 10.0]
+  projection:
+    kind: countsketch
+    seed: 0
+    # GRADIEND needs a sketch for memory; ACTIEND is cheap enough to retain
+    # its native activation space, avoiding sketch-only alignment claims.
+    gradiend_dim: 512
+    actiend_dim: null

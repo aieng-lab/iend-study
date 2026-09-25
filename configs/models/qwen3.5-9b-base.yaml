@@ -1,0 +1,48 @@
+# Qwen3.5-9B-Base + Qwen-Scope TopK resid SAEs (W64K, L0=50).
+# Requires sae-lens >= 6.43 (Qwen Scope loader).
+key: qwen3.5-9b-base
+hf_model: Qwen/Qwen3.5-9B-Base
+sae_model: Qwen/Qwen3.5-9B-Base
+sae_release: qwen-scope-3.5-9b-base-w64k-l50
+sae_hf_repo: Qwen/SAE-Res-Qwen3.5-9B-Base-W64K-L0_50
+n_layers: 32
+hf_resid_template: "model.layers.{layer}"
+sae_id_template: "layer{layer}"
+arch: qwen3_5
+suite_default: core
+learning_rate: 1.0e-5
+
+training:
+  # Keep the validated 1e-5 LR.  A 100-step LR-scaled screen was unstable on
+  # large models; 200 steps retains headroom after the current repetition run
+  # reached minAUC 1.0 by step 125.
+  learning_rate_gradiend: 1.0e-5
+  max_steps_gradiend: 500
+  eval_steps_gradiend: 25
+  # ACTIEND converged at encoder LR 1e-5, decoder LR 1.15e-2 and 100 steps in
+  # array 4043017. Pin the recorded decoder rate; it is part of that result.
+  learning_rate_actiend: 1.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  learning_rate_decoder_actiend: 1.15e-2
+  # AGIEND (500 steps, shared decoder LR): LR sweep job 4228333 on gender_en:M --
+  # 3e-5 never converged (minAUC 0.62), 3e-4 converged (minAUC 1.0, corr 0.99 by
+  # step 500). 10x below the small-model default (3e-3, defaults.yaml).
+  learning_rate_agiend: 3.0e-4
+  # float32 weights alone are ~~36GB for this 9B model, before gradients,
+  # activations or optimizer state. The study defaulted to float32 everywhere
+  # until 2026-08-28 simply because nothing ever forwarded a dtype; small models
+  # stay float32 so their existing checkpoints and hashes are untouched.
+  torch_dtype: bfloat16
+  # GRADIEND's encoder/decoder spans the pruned gradient vector, so the default
+  # topk 0.1 keeps ~692M of 6.9B dims and the head alone tries to allocate 26GB
+  # -- it OOMs on a 140GB H200. 0.01 keeps ~69M, which fits alongside the
+  # bfloat16 weights. ACTIEND is unaffected (its encoder is d_model-sized).
+  pre_prune:
+    topk: 0.01
+  # Full-width CGA first concatenates a 6.9B-coordinate fp32 gradient on the
+  # GPU (~25.8 GiB) before it can transfer its running mean to the CPU.  Use
+  # the same fixed 1% coordinate projection as GRADIEND; the closed-form mean
+  # remains exact within that recorded projection.
+  cga_pre_prune: true
+  cga_accumulate_device: cpu

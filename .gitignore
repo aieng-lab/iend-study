@@ -1,0 +1,71 @@
+runs/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# JetBrains / Cursor project config — may carry local SSH host/user/port
+# profiles for internal servers, not something to publish.
+.idea/
+.vscode/
+
+# Claude Code local session state — machine-local, never shared config.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Scratch/generated, not source. NEVER create ad-hoc scratch dirs in the repo
+# root (tmp/, tmpfam_tables/, foo.tmp/, scratch_*/, etc.) in the first place —
+# use the session scratchpad dir instead. These patterns exist only to stop
+# leftovers from ever being `git add`-able if one slips through.
+_tmp_*
+.tmp_*
+tmp/
+tmp*/
+*.tmp/
+scratch_*/
+pytest_tmp_*/
+test_artifacts/
+error_report.jsonl*
+.hf_taskdoc_cache/
+output/
+
+# Regeneratable analysis output (PDFs/PNGs/CSVs/tex from analysis/*.py and
+# scripts/summary_tables_pdf.sh / run_full_analysis.sh) — same reasoning as
+# runs/: large, constantly-changing binary artifacts, not source.
+analysis/figures/
+analysis/tables/
+
+# Synced Slurm job logs (scripts/rsync_analysis.sh, auto-pruned after 2 days)
+slurm-logs/
+
+# Material that did not make it into the paper (theory side-study, SAE-absorption
+# study, AxBench Concept500 validation, cluster-specific infra, dev PoCs).
+# Mirrors the repo layout so `cp -r exploratory/* .` restores it. Never committed.
+exploratory/
+
+# The paper source (reference copy, lives in its own repo/Overleaf).
+iclr2027/
+
+# Generated figures from analysis/plot_runtime_benchmark.py etc.
+analysis/plots/
+
+# Agent / assistant working notes and editor rules: contain machine names, paths and
+# personal working history; local only, never published.
+CLAUDE.md
+AGENTS.md
+codex.md
+STUDY.md
+PLANNING.md
+PROTOCOL_INVALIDATION.md
+.cursor/
+gradiend_requests/
+
+# Generated/downloaded datasets (third-party licenses; see README "Datasets")
+/data/
+
+# Site-specific cluster settings (user name / cluster paths); template: cluster.env.example
+cluster.env

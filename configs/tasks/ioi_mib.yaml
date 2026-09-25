@@ -1,0 +1,23 @@
+id: ioi_mib
+classes: [IO, SUBJECT]
+data:
+  local_path: data/mib/ioi_mib.csv
+  hf_dataset: mib-bench/ioi
+  neutral_hf: aieng-lab/biasneutral-ajibawa
+training:
+  # Same knobs as ioi / gradiend.examples.train_source_both_ioi_one_pole
+  source: both
+  # max_steps was 2000 (inherited from the package example, never tuned here).
+  # Convergence curves checked 2026-08-18 (correlation plateaus well before
+  # 500) confirm 500 (study default) is enough for this task; same LR.
+  max_steps: 500
+  one_pole_classes: [IO]
+ablations:
+  pair: false
+  one_pole: true
+# SAE: factual IO only; SUBJECT is CF on alternative_*. CAA expands CF rows.
+causal:
+  score: mask_argmax_among
+eval:
+  # Skip model×task cells below this base cloze accuracy (null = no filter).
+  min_base_accuracy: 0.5

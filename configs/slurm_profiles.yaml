@@ -1,0 +1,149 @@
+# Conservative single-GPU defaults used by ARRAY_BY_METHOD=1.
+#
+# These are scheduling policy, not scientific study config, so they live
+# outside configs/models/ and do not alter experiment/config hashes.
+# An explicit SLURM_PROFILE always overrides this table.
+defaults:
+  gradiend: gpumem-24-1x
+  actiend: gpumem-24-1x
+  sae: gpumem-24-1x
+  caa: gpumem-24-1x
+  cga: gpumem-24-1x
+  caga: gpumem-24-1x
+  agiend: gpumem-24-1x
+
+models:
+  # Small float32 models comfortably fit the normal study floor.
+  pythia-70m-deduped: {}
+  gpt2-small: {}
+  gemma-3-270m: {}
+
+  # 2B, bfloat16 -- unlike qwen3.5-9b-base/35b-a3b-base, does not need the cluster's
+  # 141 GiB tier for any method (chosen specifically as the Qwen datapoint
+  # runnable on a second cluster AI Systems, which currently only grants this project A100
+  # (80 GiB) access, not H100/H200).
+  # The 24 GiB floor WAS too tight for cga, confirmed by a real run: job
+  # 5793921 (gender_en, a second cluster) OOM'd 122 MiB short on a 15.89 GiB GPU --
+  # cga_pre_prune correctly shrank the accumulator (input_dim=13.7M) but the
+  # classic (non-streaming) backward still transiently materializes a
+  # full-width gradient before selection (same mechanism as the 8-9B models,
+  # just proportionally smaller at 2B -- see CLAUDE.md/this session's
+  # investigation). Bumped to the 48 GiB tier for real headroom; other
+  # methods are unmeasured but comment history suggested the 24 GiB floor
+  # might also be tight for them -- revisit if any of them OOM too.
+  qwen3.5-2b-base:
+    cga: gpumem-48-1x
+
+  # 2B bfloat16 (same size class as qwen3.5-2b-base): UNMEASURED, estimated to fit
+  # a 48 GiB L40S for every method.  Revisit after the first real runs.
+  gemma-2-2b:
+    gradiend: gpumem-48-1x
+    cga: gpumem-48-1x
+    caga: gpumem-48-1x
+    agiend: gpumem-48-1x
+    actiend: gpumem-48-1x
+    sae: gpumem-48-1x
+    caa: gpumem-48-1x
+
+  # Gradient-space methods are deliberately placed above activation-space
+  # methods. GRADIEND gets an H200 for every 4B+ model: this is intentionally
+  # safer than its measured minimum because optimizer/evaluation peaks and
+  # method variants can be materially larger than the base-model footprint.
+  # AGIEND requires a backward pass through the backbone to obtain dL/dh;
+  # keep it on the conservative H200 tier until its peak is measured.
+  gemma-3-4b-pt:
+    gradiend: gpumem-141-1x
+    cga: gpumem-80-1x
+    caga: gpumem-48-1x
+    agiend: gpumem-141-1x
+    actiend: gpumem-48-1x
+    sae: gpumem-48-1x
+    caa: gpumem-48-1x
+
+  # Measured isolated peaks: GRADIEND 63.6/70.4 GiB and ACTIEND 31.2/35.4 GiB
+  # for Llama/Qwen respectively.  Keep GRADIEND on H200 because its causal
+  # evaluation can peak above the isolated measurement.  ACTIEND has >44 GiB
+  # of headroom on an 80 GiB A100 and should not consume an H200.
+  llama-3.1-8b:
+    gradiend: gpumem-141-1x
+    # CGA retains its unused model-width encoder on the host (~26 GiB) while
+    # streaming gradients through the H200 backbone.  64G host RAM was
+    # cgroup-OOM-killed in 4098622 before Python could report a CUDA error.
+    cga: gpumem-141-host128-1x
+    # Measured Llama CAGA gender_en peak is 31.69 GiB.  It needs a backward
+    # pass but not CGA's model-width gradient accumulator, so an 80-GiB A100
+    # retains ample headroom without consuming an H200.
+    caga: gpumem-80-1x
+    agiend: gpumem-141-1x
+    actiend: gpumem-80-1x
+    sae: gpumem-80-1x
+    caa: gpumem-48-1x
+  qwen3.5-9b-base:
+    gradiend: gpumem-141-1x
+    cga: gpumem-141-host128-1x
+    caga: gpumem-80-1x
+    agiend: gpumem-141-1x
+    actiend: gpumem-80-1x
+    sae: gpumem-80-1x
+    caa: gpumem-48-1x
+
+  # At 27B, BF16 weights are ~54 GiB. A real CGA pre-prune on one H200 reached
+  # 137.6 GiB allocated and OOMed. Weight-gradient methods therefore use the
+  # package's explicit 3-GPU device-map path; the remaining methods stay
+  # unsharded.
+  gemma-3-27b-pt:
+    gradiend: gpumem-141-3x
+    cga: gpumem-141-3x
+    caga: gpumem-141-host128-1x
+    agiend: gpumem-141-3x
+    actiend: gpumem-141-host128-1x
+    sae: gpumem-141-host128-1x
+    caa: gpumem-141-host128-1x
+  # Same shape as gemma-3-27b-pt (dense, bf16 weights ~54 GiB).
+  qwen3.5-27b:
+    gradiend: gpumem-141-3x
+    cga: gpumem-141-3x
+    caga: gpumem-141-host128-1x
+    agiend: gpumem-141-3x
+    actiend: gpumem-141-host128-1x
+    sae: gpumem-141-host128-1x
+    caa: gpumem-141-host128-1x
+
+  # 35B MoE: bf16 weights ~70 GiB; the layers-only weight gradients (all
+  # experts are in scope) add ~68 GiB, so GRADIEND/CGA do not fit one H200 and
+  # use the 3-GPU device-map path.  The activation-space methods keep the
+  # weights on one H200 (UNMEASURED -- confirm on the first real run).
+  qwen3.5-35b-a3b-base:
+    gradiend: gpumem-141-3x
+    cga: gpumem-141-3x
+    caga: gpumem-141-host128-1x
+    agiend: gpumem-141-host128-1x
+    actiend: gpumem-141-host128-1x
+    sae: gpumem-141-host128-1x
+    caa: gpumem-141-host128-1x
+
+  # 70B DRAFT: bf16 weights alone (~141 GiB) exceed one H200, so every method
+  # is multi-GPU.  With the device map GPU 0 holds no backbone weights, so
+  # 3 GPUs = 2 backbone GPUs (~260 GiB) for the activation-space methods and
+  # 4 GPUs = 3 backbone GPUs (~390 GiB) for weight-gradient methods.  Whether
+  # the SAE/CAA stages honour the sharded loader at this size is UNTESTED.
+  llama-3.3-70b-instruct:
+    gradiend: gpumem-141-4x
+    cga: gpumem-141-4x
+    caga: gpumem-141-3x
+    agiend: gpumem-141-3x
+    actiend: gpumem-141-3x
+    sae: gpumem-141-3x
+    caa: gpumem-141-3x
+
+  # gpt-oss-20b DRAFT (see configs/models/gpt-oss-20b.yaml -- blocked on MXFP4
+  # dequantization).  bf16 after dequantization: ~42 GiB weights + ~40 GiB grads.
+  # SAE: 6 layers only (gpt-oss-20b-andyrdt).
+  gpt-oss-20b:
+    gradiend: gpumem-141-1x
+    cga: gpumem-141-1x
+    caga: gpumem-80-1x
+    agiend: gpumem-80-1x
+    actiend: gpumem-80-1x
+    sae: gpumem-80-1x
+    caa: gpumem-80-1x

@@ -1,0 +1,12 @@
+id: pronoun_number
+classes: [singular, plural]
+data:
+  hf_dataset: aieng-lab/en-pronouns
+  neutral_hf: aieng-lab/en-pronoun-neutral
+  max_rows_per_split: null
+class_merge_map:
+  singular: [1SG, 3SG]
+  plural: [1PL, 3PL]
+class_merge_transition_groups:
+  - [1SG, 1PL]
+  - [3SG, 3PL]

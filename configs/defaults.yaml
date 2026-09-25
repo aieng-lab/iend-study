@@ -1,0 +1,222 @@
+# Global study defaults. Override order: defaults → task → model → suite → CLI.
+schema_version: "1.0"
+
+training:
+  source: alternative
+  target: diff
+  # Shared fallback if a backend-specific key is unset.
+  learning_rate: 1.0e-5
+  # Same LR for every task; backends differ. ACTIEND none-split concat
+  # collapses at 1e-4 on several gpt2-small tasks; GRADIEND (gradient+prune)
+  # converges more reliably at 1e-4 and tolerates it on tasks that already
+  # work at 1e-5. Override per-task only for a documented exception.
+  learning_rate_gradiend: 1.0e-4
+  # ACTIEND: 100-step budget (running_rms makes it schedule-robust and it
+  # converges fast, unlike GRADIEND). LR 5e-5 = the 500-step 1e-5 rescaled to
+  # 100 steps; validated by suite_s100 (pair corr ~0.97, real causal effects).
+  learning_rate_actiend: 5.0e-5
+  max_steps_actiend: 100
+  eval_steps_actiend: 20
+  # AGIEND (learned activation-gradient encoder-decoder). At the shared 1e-5 it was
+  # badly undertrained (min_auc 0.59-0.68); the ws1 LR sweep (2026-09-06) shows it
+  # converges at >=1e-4, and 3e-3 converges on BOTH gpt2-small (ravel_country 0.936,
+  # gender 1.0) and pythia-70m-deduped (ravel_country 0.982, gender 0.986) at the
+  # default 500 steps. Causal is arm- and LR-invariant (ravel ~0.72 gpt2 / ~0.17
+  # pythia), so no decoupled decoder LR is used (learning_rate_decoder_agiend unset ->
+  # package resolves activation_gradient -> None, shared; the reachability lift is
+  # ACTIEND/value-space-specific per IEND_THEORY_PLAN 2.7). See
+  # scripts/ablation_agiend_lr.py.
+  learning_rate_agiend: 3.0e-3
+  # Decoupled ACTIEND decoder LR (was commented). suite_s100 used 1.15e-2 and
+  # produced real ACTIEND causal effects (the reachability cap the block below
+  # describes); folded in as the default alongside the 100-step budget.
+  learning_rate_decoder_actiend: 1.15e-2
+  # NOTE on the decoder LR default (package fix 2026-09-05): TrainingArguments
+  # resolves its "default" sentinel signal-kind-aware -- "auto" (reachability lift,
+  # IEND_THEORY_PLAN 2.7) for ACTIVATION-space signals (ACTIEND/AGIEND), None
+  # (encoder+decoder share the rate) for a GRADIEND (gradient) signal. So GRADIEND is
+  # NEVER silently auto-decoupled any more; we deliberately do NOT set
+  # learning_rate_decoder_gradiend (it stays shared/None, the historical behaviour).
+  # ACTIEND here is pinned to an explicit 1.15e-2 above (overrides the auto lift).
+  # Rationale for the lift (ACTIEND on gpt2-small): the decoder can move at most
+  # ~lr*steps*sqrt(dim); that ceiling ~0.48 vs a ridge optimum ~110 (R~0.004) means it
+  # provably cannot arrive at the shared rate. Set learning_rate_decoder_gradiend to a
+  # float only to deliberately test a decoupled GRADIEND decoder LR (see
+  # scripts/ablation_gradiend_decoder_lr.py, which measures exactly that).
+  # Main-experiment default as of 2026-08-21 (was opt-in-only before, via
+  # configs/suites/gradiend_no_embed.yaml). Sets signal_scope=SignalScope.layers()
+  # for GRADIEND -- the same scope object ACTIEND already uses -- so GRADIEND's
+  # effective scope matches ACTIEND's exactly: residual transformer blocks
+  # only, excluding both the embedding matrices AND the final layer norm
+  # (ln_f isn't one of "the layers" -- see study/training_profiles.py's
+  # comment above _GRADIEND_NO_EMBED_SCOPE_PARAMS's old spot for why).
+  # Architecture-agnostic (resolved via ModelTopology at model-construction
+  # time in the gradiend package, not a hand-maintained per-arch dict here
+  # any more) -- an unsupported architecture raises there. See
+  # study/training_profiles.py and CLAUDE.md's "GRADIEND main-experiment
+  # scope" note.
+  gradiend_exclude_embeddings: true
+  # Optional checkpoint / convergence metric: correlation | roc_auc | loss.
+  # Study defaults: one-pole → roc_auc, pair → correlation (unless set here).
+  # convergent_metric: correlation
+  # convergent_score_threshold: 0.5
+  # prefer_convergent_checkpoint: false
+  max_steps: 500
+  eval_steps: 50
+  train_batch_size: 8
+  eval_batch_size: 16
+  # Token window for training / ACTIEND filled templates (keeps [MASK] in window).
+  max_length: 128
+  max_seeds: 3
+  seed: 0
+  use_cache: false
+  # Train-artifact resume policy for --skip-existing (gradiend/actiend train
+  # stage only; separate from the package `use_cache` field above and from
+  # SAE/CAA/causal caching). "always": trust any existing done.json + saved
+  # checkpoint for this experiment dir, even if the computed config_hash no
+  # longer matches (e.g. a max_steps/LR tweak) — reuses whatever is on disk.
+  # "hash_match": prior strict behavior, retrain whenever config_hash drifts.
+  # See CLAUDE.md "train_cache_mode" note.
+  train_cache_mode: always
+  # Whether the SAE stage persists sae_cache/L{n}_*/*.npz latent shards for
+  # skip-on-recompute (see study/stages/sae.py::_configure_poc_globals). Set
+  # false on a storage-constrained cluster where SAE tasks run once and are
+  # never resumed with the same fingerprint -- the cache then buys nothing
+  # and is pure disk cost. Leave true (default) where cheap disk + resumable
+  # suite reruns make the reuse worthwhile. See CLAUDE.md's SAE-cache note.
+  sae_disk_cache: true
+  # Delete a finished cell's trained-weight files (artifacts/<backend>__*/**.safetensors
+  # etc.) after its final results.json write, only when the causal stage ran and
+  # nothing errored. Off by default; the a second cluster env file turns it on because the
+  # project fileset quota is tiny. A later forced re-run of the same cell
+  # (--refresh-causal/--force-causal) then retrains instead of reloading.
+  # See study/artifact_cleanup.py.
+  cleanup_checkpoints: false
+  fail_on_non_convergence: false
+  # Train decoded update toward 0 on neutrals (requires task neutral_data).
+  add_neutral_identity_transitions: true
+  # Package caps are PER feature class / group (not a global total). Mid-train
+  # encoder eval also expands each row to both poles, so the Encoding bar total
+  # is roughly: train_max × n_groups × 2  (e.g. 50×3×2=600 on race pairs).
+  encoder_eval_max_size: 200
+  encoder_eval_train_max_size: 50
+  encoder_bootstrap_auc: 100
+  # CGA-only: cap on rows fed to the closed-form fit (per balance group, same
+  # convention as train_max_size on the package's create_training_data). GRADIEND
+  # /ACTIEND are naturally bounded by max_steps regardless of dataset size; CGA's
+  # fit is a single streaming pass with no such cap, so without this it silently
+  # scans the entire split (74,060 rows on gender_en — found live on the first
+  # real cluster run, 2026-08-26, when SCALE=small was expected to bound it and
+  # didn't, since it only touched causal/encoder-eval sizes). See cga_eval.py.
+  cga_max_size: 1000
+  # Shared CAA/SAE residual site (activation_protocol.py).
+  # prediction = filled span (default).
+  # ACTIEND: pre_prediction as this site defaults to mixed-site training
+  # (encoder H_{t-1}, decoder target = filled-token diff at prediction).
+  activation_site: prediction
+  # Optional ACTIEND decoder-target site. Unset: same as activation_site,
+  # except activation_site=pre_prediction -> target prediction (mixed-site).
+  # target_activation_site: prediction
+  # SAE feature selection sites (independent of ACTIEND/CAA). Always run both:
+  # prediction = filled span (fair vs ACTIEND/CAA encode);
+  # pre_prediction = classical last-context residual (fairer for next-token causal).
+  sae_select_sites: [prediction, pre_prediction]
+  # Mixed-site ACTIEND-PRE (source=pre_prediction → target=prediction, ids
+  # actiend_pre:…). Off by default — weak vs filled actiend on gender_en.
+  # Opt in: training.actiend_pre: true (or train_actiend_pre: true).
+  actiend_pre: false
+  # Gradient GRADIEND only (ACTIEND has no pre-prune API). Study runner always applies these.
+  pre_prune:
+    n_samples: 16
+    topk: 0.1
+    source: alternative
+  post_prune:
+    topk: 0.01
+    part: decoder-weight
+
+suite_default: core
+
+# Ablation toggles consumed by suite YAML / runner
+ablations:
+  pair: true
+  one_pole: true
+
+causal:
+  score: class_token_logit
+  # null → shared 1/2/5-per-decade coarse grid (1e5…1e-5, 31 rates).
+  # Every backend selects directly from this grid under the LMS gate.
+  strengths: null  # null → DEFAULT_CAUSAL_STRENGTHS (5/2/1 × decades, 1e-5…1e5)
+  n_per_group: 1000  # M / F / neutral texts for stratified causal pool (TEST report)
+  # Validation-only cap for the strength SWEEP (selection). The 31-strength x
+  # bisection sweep runs on this many val texts/group purely to pick the strength;
+  # the reported signed_effect/lms_ok use the full n_per_group TEST pool. 200 gives
+  # the same selected strength (coarse grid argmax) at ~5x less sweep cost — the
+  # dominant cost on heavy caa/sae multiclass causal (was hitting the 24h wall).
+  # Applies to all CAA-style methods (caa/sae/cga/caga). No CAUSAL_PROTOCOL_VERSION
+  # bump: nil effect on the reported metric; existing cells keep their 1000-val
+  # selection. Set to null to disable the cap (full-size selection). See
+  # causal_study.run_study_causal.
+  val_n_per_group: 200
+  decoder_max_size: 1000  # evaluate_decoder: training-like + neutral/LMS (TEST report)
+  # Validation-only decoder-frame cap for GRADIEND/ACTIEND: the decoder GRID (LRs x
+  # feature_factors) is built on this many val examples/group to SELECT the LR; the
+  # frozen selection is reported on the full decoder_max_size TEST frame. Same
+  # small-val-select / full-test-report principle as val_n_per_group, extended to the
+  # IEND decoder path so ALL methods share it. null => validation stays full-size.
+  val_decoder_max_size: 200
+  # Disk: curve_samples_*.jsonl repeats every sample × strength (+ full prompts).
+  # Off by default — strength curves live in causal/summary.json. Set true only
+  # when debugging per-sample strength trajectories.
+  persist_curve_samples: false
+  persist_sample_text: false
+  # Optional cap on rows written to samples_*.jsonl (null = all selected samples).
+  persist_max_samples: null
+
+# Feature suitability S = E × G_causal (see suitability.py / METRIC_FORMULAS).
+suitability:
+  causal_effect_threshold: 0.05  # τ_c: |eff| gate after LMS×0.99
+  soft_causal: true              # G = clip(|eff|/τ_c, 0, 1); was hard {0,1} gate
+  e_ok: 0.8                      # reason "ok" vs "E" when G passes
+
+neutral:
+  hf_dataset: aieng-lab/biasneutral-ajibawa
+  max_rows: 1000   # test (report). val/train are extra sampled rows, not a split of this.
+  val_rows: 300    # Youden τ, SAE rank / k*, causal strength
+  train_rows: 1000 # GRADIEND cloze identity
+
+# Scale profiles: switch dataset sizes without touching training hyperparams.
+# Usage: --scale small | --scale large (default: large)
+scale_profiles:
+  small:
+    training:
+      encoder_eval_max_size: 50
+      encoder_eval_train_max_size: 16
+      encoder_bootstrap_auc: 30
+      cga_max_size: 200
+    causal:
+      n_per_group: 200
+      decoder_max_size: 200
+    neutral:
+      max_rows: 200
+      val_rows: 80
+      train_rows: 200
+  large:
+    training:
+      encoder_eval_max_size: 200
+      encoder_eval_train_max_size: 50
+      encoder_bootstrap_auc: 100
+      cga_max_size: 1000
+    causal:
+      n_per_group: 1000
+      decoder_max_size: 1000
+    neutral:
+      max_rows: 1000
+      val_rows: 300
+      train_rows: 1000
+
+# --smoke overlay for split sizes (not a --scale name).
+smoke:
+  neutral:
+    max_rows: 80
+    val_rows: 40
+    train_rows: 80
