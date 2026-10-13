@@ -1,4 +1,6 @@
-# gradiend-sae
+[![arXiv:2609.32355](https://img.shields.io/badge/arXiv-2609.32355-blue.svg)](https://arxiv.org/abs/2609.32355)
+
+# Gradients for Interventions and Activations for Detection: Targeted Feature Learning in Language Models
 
 Study code for **"Targeted Feature Learning in Language Models"**. The paper
 compares six *targeted* feature-learning methods, obtained by crossing three
@@ -270,6 +272,20 @@ and `study/method_ids.py`.
 
 ```bash
 pytest
+```
+
+## Citation
+
+```bibtex
+@misc{drechsel2026gradientsinterventionsactivationsdetection,
+      title={Gradients for Interventions and Activations for Detection: Targeted Feature Learning in Language Models}, 
+      author={Jonathan Drechsel and Steffen Herbold},
+      year={2026},
+      eprint={2609.32355},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2609.32355}, 
+}
 ```
 
 `tests/conftest.py` skips a few torch-heavy files by default (set
